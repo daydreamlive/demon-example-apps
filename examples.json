@@ -1,0 +1,22 @@
+[
+  {
+    "id": "tides",
+    "name": "DEMON Tides",
+    "path": "apps/tides",
+    "route": "/tides",
+    "kind": "static",
+    "summary": "Audio-reactive flow-field XY control surface for live remixing.",
+    "dependencies": ["DEMON /sdk bundle"],
+    "controls": ["pointer xy", "hold", "scroll", "prompt", "LoRA A/B"]
+  },
+  {
+    "id": "summon",
+    "name": "DEMON Summon",
+    "path": "apps/summon",
+    "route": "/arp",
+    "kind": "static",
+    "summary": "Hand-tracking control surface for a live DEMON remix session.",
+    "dependencies": ["DEMON /sdk bundle", "MediaPipe", "Three.js", "Tone.js"],
+    "controls": ["pinch", "hand height", "hand distance", "LoRA A/B"]
+  }
+]

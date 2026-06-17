@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DEMON TIDES</title>
+    <style>
+      :root { --bloom: 0; }
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #020907;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+      }
+      #tides-canvas {
+        position: fixed;
+        inset: 0;
+        display: block;
+        touch-action: none;
+        cursor: crosshair;
+      }
+      /* Top-left hint that fades once a session is live. */
+      #tides-hint {
+        position: fixed;
+        top: 16px;
+        left: 18px;
+        z-index: 30;
+        color: #8fffc0;
+        font-size: 11px;
+        line-height: 1.7;
+        letter-spacing: 0.04em;
+        text-shadow: 0 0 12px rgba(108, 255, 176, 0.5);
+        pointer-events: none;
+        user-select: none;
+      }
+      #tides-hint b { color: #d7ffe7; font-weight: 600; }
+
+      #loading-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: grid;
+        place-items: center;
+        color: #f4fff8;
+        background:
+          radial-gradient(circle at 50% 40%, rgba(108, 255, 176, 0.16), transparent 30%),
+          rgba(0, 0, 0, 0.82);
+        text-align: center;
+      }
+      #loading-overlay[hidden] { display: none; }
+      #loading-overlay .loading-card { width: min(360px, calc(100vw - 40px)); }
+      #loading-overlay .loading-title {
+        margin-bottom: 10px;
+        color: #8fffc0;
+        font-size: 13px;
+        letter-spacing: 0.22em;
+      }
+      #loading-overlay .loading-message { font-size: 12px; color: #d7ffe7; }
+      #loading-overlay .loading-bar {
+        height: 4px;
+        margin-top: 18px;
+        overflow: hidden;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.14);
+      }
+      #loading-overlay .loading-bar::before {
+        content: "";
+        display: block;
+        width: 40%;
+        height: 100%;
+        background: linear-gradient(90deg, #6cffb0, #4fd0ff);
+        animation: loading-sweep 1.1s ease-in-out infinite;
+      }
+      @keyframes loading-sweep {
+        0% { transform: translateX(-110%); }
+        100% { transform: translateX(260%); }
+      }
+
+      /* DEMON control bar — compact so it does not cover the tide surface. */
+      #tides-panel {
+        position: fixed;
+        left: 16px;
+        right: 16px;
+        bottom: 14px;
+        z-index: 50;
+        font-size: 11px;
+        color: #d7ffe7;
+        background: rgba(0, 0, 0, 0.72);
+        border: 1px solid rgba(120, 255, 180, calc(0.28 + var(--bloom) * 0.5));
+        border-radius: 8px;
+        padding: 9px 11px;
+        backdrop-filter: blur(6px);
+        box-shadow: 0 0 calc(8px + var(--bloom) * 60px) rgba(108, 255, 176, calc(var(--bloom) * 0.5));
+        max-height: min(42vh, 260px);
+        overflow-y: auto;
+      }
+      #tides-panel h1 {
+        margin: 0;
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        color: #8fffc0;
+        white-space: nowrap;
+      }
+      #tides-panel button {
+        font: inherit;
+        color: #00120a;
+        background: #6cffb0;
+        border: 0;
+        border-radius: 4px;
+        padding: 5px 8px;
+        cursor: pointer;
+        min-width: 64px;
+      }
+      #tides-panel button:disabled { opacity: 0.4; cursor: default; }
+      #tides-panel button.alt {
+        background: transparent;
+        color: #8fffc0;
+        border: 1px solid rgba(120, 255, 180, 0.5);
+      }
+      #tides-panel input[type="text"],
+      #tides-panel select {
+        font: inherit;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        padding: 4px 6px;
+        color: #d7ffe7;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(120, 255, 180, 0.3);
+        border-radius: 4px;
+      }
+      .tides-meter {
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+      .tides-meter > div {
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, #6cffb0, #4fd0ff);
+        transition: width 0.08s linear;
+      }
+      .tides-row { display: flex; justify-content: space-between; gap: 6px; }
+      .tides-dim { color: #7fb89a; }
+
+      .tides-shell {
+        display: grid;
+        grid-template-columns: 96px minmax(170px, 1fr) minmax(150px, 1fr) minmax(220px, 1.25fr) minmax(210px, auto);
+        grid-template-areas:
+          "title status fixture prompt actions"
+          "remix density rough timbre structure"
+          "loraA loraA loraB loraB loraB";
+        align-items: center;
+        gap: 8px;
+      }
+      #tides-panel h1 { grid-area: title; }
+      .tides-status { grid-area: status; }
+      #tides-fixture { grid-area: fixture; }
+      #tides-prompt { grid-area: prompt; }
+      .tides-actions { grid-area: actions; justify-self: end; }
+      .tides-shell > .tides-control:nth-of-type(2) { grid-area: remix; }
+      .tides-shell > .tides-control:nth-of-type(3) { grid-area: density; }
+      .tides-shell > .tides-control:nth-of-type(4) { grid-area: rough; }
+      .tides-shell > .tides-control:nth-of-type(5) { grid-area: timbre; }
+      .tides-shell > .tides-control:nth-of-type(6) { grid-area: structure; }
+      .tides-shell > .tides-control:nth-of-type(7) { grid-area: loraA; }
+      .tides-shell > .tides-control:nth-of-type(8) { grid-area: loraB; }
+      .tides-status {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .tides-control { display: grid; gap: 3px; min-width: 0; }
+      .tides-control label, .tides-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 6px;
+        color: #8fffc0;
+        white-space: nowrap;
+      }
+      .tides-lora {
+        display: grid;
+        grid-template-columns: minmax(80px, 1fr) 52px;
+        gap: 4px;
+      }
+      .tides-lora select { min-width: 0; width: 100%; }
+      .tides-lora input[type="number"] {
+        width: 52px;
+        min-width: 0;
+        font: inherit;
+        box-sizing: border-box;
+        padding: 4px 3px;
+        color: #d7ffe7;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(120, 255, 180, 0.3);
+        border-radius: 4px;
+      }
+      .tides-lora input[type="range"] {
+        grid-column: 1 / -1;
+        width: 100%;
+        margin: 0;
+        accent-color: #6cffb0;
+      }
+      .tides-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+
+      @media (max-width: 1280px) {
+        .tides-shell {
+          grid-template-columns: 96px minmax(150px, 1fr) minmax(150px, 1fr) minmax(150px, 1fr);
+          grid-template-areas:
+            "title status fixture actions"
+            "prompt prompt prompt prompt"
+            "remix density rough timbre"
+            "structure loraA loraA loraA"
+            "loraB loraB loraB loraB";
+        }
+      }
+      @media (max-width: 760px) {
+        #tides-panel { left: 0; right: 0; bottom: 0; max-height: 52vh; padding: 8px; border-radius: 0; }
+        .tides-shell {
+          grid-template-columns: 1fr 1fr;
+          grid-template-areas:
+            "title actions"
+            "status status"
+            "fixture fixture"
+            "prompt prompt"
+            "remix density"
+            "rough timbre"
+            "structure structure"
+            "loraA loraA"
+            "loraB loraB";
+          gap: 7px;
+        }
+        #tides-panel h1 { align-self: center; }
+        #tides-panel button { min-width: 54px; padding: 5px 6px; }
+        #tides-hint { font-size: 10px; }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="tides-canvas"></canvas>
+
+    <div id="tides-hint">
+      <b>DEMON TIDES</b><br />
+      move — remix &amp; density<br />
+      flick — roughness<br />
+      hold — bend timbre<br />
+      scroll — structure
+    </div>
+
+    <div id="loading-overlay" aria-live="polite" hidden>
+      <div class="loading-card">
+        <div class="loading-title">DEMON TIDES</div>
+        <div id="loading-message" class="loading-message">loading DEMON model</div>
+        <div class="loading-bar"></div>
+      </div>
+    </div>
+
+    <div id="tides-panel">
+      <div class="tides-shell">
+        <h1>DEMON TIDES</h1>
+        <div class="tides-status">
+          <span class="tides-dim">status</span>
+          <span id="tides-status">idle</span>
+        </div>
+        <select id="tides-fixture"></select>
+        <input id="tides-prompt" type="text" value="instrumental electronic music" />
+        <div class="tides-control">
+          <div class="tides-label"><span>remix</span><span id="tides-remix" class="tides-dim">0.00</span></div>
+          <div class="tides-meter"><div id="tides-remix-fill"></div></div>
+        </div>
+        <div class="tides-control">
+          <div class="tides-label"><span>density</span><span id="tides-density" class="tides-dim">0.0</span></div>
+          <div class="tides-meter"><div id="tides-density-fill"></div></div>
+        </div>
+        <div class="tides-control">
+          <div class="tides-label"><span>rough</span><span id="tides-rough" class="tides-dim">0.0</span></div>
+          <div class="tides-meter"><div id="tides-rough-fill"></div></div>
+        </div>
+        <div class="tides-control">
+          <div class="tides-label"><span>timbre</span><span id="tides-timbre" class="tides-dim">0.00</span></div>
+          <div class="tides-meter"><div id="tides-timbre-fill"></div></div>
+        </div>
+        <div class="tides-control">
+          <div class="tides-label"><span>structure</span><span id="tides-structure" class="tides-dim">0.00</span></div>
+          <div class="tides-meter"><div id="tides-structure-fill"></div></div>
+        </div>
+        <div class="tides-control">
+          <div class="tides-label"><span>lora a</span><span id="tides-lora-a-value" class="tides-dim">0.80</span></div>
+          <div class="tides-lora">
+            <select id="tides-lora-a"></select>
+            <input id="tides-lora-a-strength-number" type="number" min="0" max="2" step="0.05" value="0.8" />
+            <input id="tides-lora-a-strength" type="range" min="0" max="2" step="0.01" value="0.8" />
+          </div>
+        </div>
+        <div class="tides-control">
+          <div class="tides-label"><span>lora b</span><span id="tides-lora-b-value" class="tides-dim">0.80</span></div>
+          <div class="tides-lora">
+            <select id="tides-lora-b"></select>
+            <input id="tides-lora-b-strength-number" type="number" min="0" max="2" step="0.05" value="0.8" />
+            <input id="tides-lora-b-strength" type="range" min="0" max="2" step="0.01" value="0.8" />
+          </div>
+        </div>
+        <div class="tides-actions">
+          <button id="tides-start">Start</button>
+          <button id="tides-reload" class="alt" disabled>Reload</button>
+          <button id="tides-test" class="alt">Test</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bridge boots the DEMON session on a fixture, maps pointer gestures to
+         knobs, and reads the live audio back to drive the flow-field. -->
+    <script type="module" src="./demon-bridge.js"></script>
+  </body>
+</html>

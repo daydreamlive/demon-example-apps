@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arpeggiator → DEMON</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      #loading-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: grid;
+        place-items: center;
+        color: #f4fff8;
+        background:
+          radial-gradient(circle at 50% 40%, rgba(108, 255, 176, 0.16), transparent 30%),
+          rgba(0, 0, 0, 0.82);
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        text-align: center;
+      }
+      #loading-overlay[hidden] {
+        display: none;
+      }
+      #loading-overlay .loading-card {
+        width: min(360px, calc(100vw - 40px));
+      }
+      #loading-overlay .loading-title {
+        margin-bottom: 10px;
+        color: #8fffc0;
+        font-size: 13px;
+        letter-spacing: 0.16em;
+      }
+      #loading-overlay .loading-message {
+        font-size: 12px;
+        color: #d7ffe7;
+      }
+      #loading-overlay .loading-bar {
+        height: 4px;
+        margin-top: 18px;
+        overflow: hidden;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.14);
+      }
+      #loading-overlay .loading-bar::before {
+        content: "";
+        display: block;
+        width: 40%;
+        height: 100%;
+        background: linear-gradient(90deg, #6cffb0, #4fd0ff);
+        animation: loading-sweep 1.1s ease-in-out infinite;
+      }
+      @keyframes loading-sweep {
+        0% { transform: translateX(-110%); }
+        100% { transform: translateX(260%); }
+      }
+      /* DEMON control bar — compact so it does not cover the hand surface. */
+      #demon-panel {
+        position: fixed;
+        left: 16px;
+        right: 16px;
+        bottom: 14px;
+        z-index: 50;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 11px;
+        color: #d7ffe7;
+        background: rgba(0, 0, 0, 0.72);
+        border-top: 1px solid rgba(120, 255, 180, 0.32);
+        padding: 8px 10px;
+        backdrop-filter: blur(6px);
+        max-height: min(42vh, 260px);
+        overflow-y: auto;
+      }
+      #demon-panel h1 {
+        margin: 0;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        color: #8fffc0;
+        white-space: nowrap;
+      }
+      #demon-panel button {
+        font: inherit;
+        color: #00120a;
+        background: #6cffb0;
+        border: 0;
+        border-radius: 4px;
+        padding: 5px 8px;
+        cursor: pointer;
+        min-width: 64px;
+      }
+      #demon-panel button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      #demon-panel button.alt {
+        background: transparent;
+        color: #8fffc0;
+        border: 1px solid rgba(120, 255, 180, 0.5);
+      }
+      #demon-panel input[type="text"] {
+        font: inherit;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        padding: 4px 6px;
+        color: #d7ffe7;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(120, 255, 180, 0.3);
+        border-radius: 4px;
+      }
+      .demon-meter {
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+      .demon-meter > div {
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, #6cffb0, #4fd0ff);
+        transition: width 0.08s linear;
+      }
+      #demon-panel select {
+        font: inherit;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        padding: 4px 6px;
+        color: #d7ffe7;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(120, 255, 180, 0.3);
+        border-radius: 4px;
+      }
+      .demon-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 6px;
+      }
+      .demon-dim {
+        color: #7fb89a;
+      }
+      .demon-shell {
+        display: grid;
+        grid-template-columns: 92px minmax(180px, 1fr) minmax(170px, 1fr) minmax(220px, 1.25fr) minmax(210px, auto);
+        grid-template-areas:
+          "title status fixture prompt actions"
+          "remix density timbre rough structure"
+          "loraA loraA loraB loraB loraB";
+        align-items: center;
+        gap: 8px;
+      }
+      #demon-panel h1 { grid-area: title; }
+      .demon-status { grid-area: status; }
+      #demon-fixture { grid-area: fixture; }
+      #demon-prompt { grid-area: prompt; }
+      .demon-actions { grid-area: actions; justify-self: end; }
+      .demon-shell > .demon-control:nth-of-type(2) { grid-area: remix; }
+      .demon-shell > .demon-control:nth-of-type(3) { grid-area: density; }
+      .demon-shell > .demon-control:nth-of-type(4) { grid-area: timbre; }
+      .demon-shell > .demon-control:nth-of-type(5) { grid-area: rough; }
+      .demon-shell > .demon-control:nth-of-type(6) { grid-area: structure; }
+      .demon-shell > .demon-control:nth-of-type(7) { grid-area: loraA; }
+      .demon-shell > .demon-control:nth-of-type(8) { grid-area: loraB; }
+      .demon-status {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .demon-control {
+        display: grid;
+        gap: 3px;
+        min-width: 0;
+      }
+      .demon-lora {
+        display: grid;
+        grid-template-columns: minmax(80px, 1fr) 52px;
+        gap: 4px;
+      }
+      .demon-lora select {
+        min-width: 0;
+        width: 100%;
+      }
+      .demon-lora input[type="number"] {
+        width: 52px;
+        min-width: 0;
+        font: inherit;
+        box-sizing: border-box;
+        padding: 4px 3px;
+        color: #d7ffe7;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(120, 255, 180, 0.3);
+        border-radius: 4px;
+      }
+      .demon-lora input[type="range"] {
+        grid-column: 1 / -1;
+        width: 100%;
+        margin: 0;
+        accent-color: #6cffb0;
+      }
+      .demon-control label,
+      .demon-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 6px;
+        color: #8fffc0;
+        white-space: nowrap;
+      }
+      .demon-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: nowrap;
+      }
+      .demon-help {
+        display: none;
+      }
+      @media (max-width: 1280px) {
+        .demon-shell {
+          grid-template-columns: 92px minmax(160px, 1fr) minmax(170px, 1fr) minmax(190px, 1fr);
+          grid-template-areas:
+            "title status fixture actions"
+            "prompt prompt prompt prompt"
+            "remix density timbre rough"
+            "structure loraA loraA loraA"
+            "loraB loraB loraB loraB";
+        }
+        .demon-actions {
+          justify-self: end;
+        }
+      }
+      @media (max-width: 760px) {
+        #demon-panel {
+          left: 0;
+          right: 0;
+          bottom: 0;
+          max-height: 52vh;
+          padding: 8px;
+        }
+        .demon-shell {
+          grid-template-columns: 1fr 1fr;
+          grid-template-areas:
+            "title actions"
+            "status status"
+            "fixture fixture"
+            "prompt prompt"
+            "remix density"
+            "timbre rough"
+            "structure structure"
+            "loraA loraA"
+            "loraB loraB";
+          gap: 7px;
+        }
+        #demon-panel h1 {
+          align-self: center;
+        }
+        .demon-actions {
+          justify-self: end;
+        }
+        #demon-panel button {
+          min-width: 54px;
+          padding: 5px 6px;
+        }
+      }
+    </style>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://esm.sh/three@0.161.0?dev",
+          "three/": "https://esm.sh/three@0.161.0&dev/"
+        }
+      }
+    </script>
+  </head>
+  <body style="width: 100%; height: 100%; overflow: hidden; margin: 0">
+    <div id="loading-overlay" aria-live="polite">
+      <div class="loading-card">
+        <div class="loading-title">ARP DEMON</div>
+        <div id="loading-message" class="loading-message">loading static demo</div>
+        <div class="loading-bar"></div>
+      </div>
+    </div>
+    <div id="renderDiv" style="width: 100%; height: 100%; margin: 0">
+      <span id="info-text">raise your hands to summon</span>
+    </div>
+
+    <div id="demon-panel">
+      <div class="demon-shell">
+        <h1>DEMON REMIX</h1>
+        <div class="demon-status">
+          <span class="demon-dim">status</span>
+          <span id="demon-status">idle</span>
+        </div>
+        <select id="demon-fixture"></select>
+        <input id="demon-prompt" type="text" value="instrumental electronic music" />
+        <div class="demon-control">
+          <div class="demon-label"><span>remix</span><span id="demon-denoise" class="demon-dim">0.00</span></div>
+          <div class="demon-meter"><div id="demon-denoise-fill"></div></div>
+        </div>
+        <div class="demon-control">
+          <div class="demon-label"><span>density</span><span id="demon-density" class="demon-dim">0.0</span></div>
+          <div class="demon-meter"><div id="demon-density-fill"></div></div>
+        </div>
+        <div class="demon-control">
+          <div class="demon-label"><span>timbre</span><span id="demon-timbre" class="demon-dim">0.00</span></div>
+          <div class="demon-meter"><div id="demon-timbre-fill"></div></div>
+        </div>
+        <div class="demon-control">
+          <div class="demon-label"><span>rough</span><span id="demon-rough" class="demon-dim">0.0</span></div>
+          <div class="demon-meter"><div id="demon-rough-fill"></div></div>
+        </div>
+        <div class="demon-control">
+          <div class="demon-label"><span>structure</span><span id="demon-structure" class="demon-dim">0.00</span></div>
+          <div class="demon-meter"><div id="demon-structure-fill"></div></div>
+        </div>
+        <div class="demon-control">
+          <div class="demon-label"><span>lora a</span><span id="demon-lora-a-value" class="demon-dim">0.80</span></div>
+          <div class="demon-lora">
+            <select id="demon-lora-a"></select>
+            <input id="demon-lora-a-strength-number" type="number" min="0" max="2" step="0.05" value="0.8" />
+            <input id="demon-lora-a-strength" type="range" min="0" max="2" step="0.01" value="0.8" />
+          </div>
+        </div>
+        <div class="demon-control">
+          <div class="demon-label"><span>lora b</span><span id="demon-lora-b-value" class="demon-dim">0.80</span></div>
+          <div class="demon-lora">
+            <select id="demon-lora-b"></select>
+            <input id="demon-lora-b-strength-number" type="number" min="0" max="2" step="0.05" value="0.8" />
+            <input id="demon-lora-b-strength" type="range" min="0" max="2" step="0.01" value="0.8" />
+          </div>
+        </div>
+        <div class="demon-actions">
+          <button id="demon-start">Start</button>
+          <button id="demon-reload" class="alt" disabled>Reload</button>
+          <button id="demon-test" class="alt">Test</button>
+        </div>
+      </div>
+      <div class="demon-help">
+        DEMON remixes the chosen song live. Hand 1 pinch controls remix amount,
+        hand 1 height controls density; hand 2 pinch controls timbre, hand 2
+        height controls rough; close hands preserve structure, hands apart loosen it.
+      </div>
+    </div>
+    <!-- Bridge boots the DEMON session on a fixture and maps hand gestures to
+         knobs; the bootstrap below creates the arpeggiator Game it reads. -->
+    <script type="module" src="./demon-bridge.js"></script>
+    <script type="module">
+      // Visual interaction adapted from Colliding Scopes' arpeggiator:
+      // https://github.com/collidingScopes/arpeggiator
+      import { Game } from "./game.js";
+      const renderDiv = document.getElementById("renderDiv");
+      if (renderDiv) {
+        const game = new Game(renderDiv);
+        window.__arpGame = game;
+      }
+    </script>
+  </body>
+</html>
