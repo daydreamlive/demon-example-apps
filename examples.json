@@ -48,5 +48,15 @@
     "summary": "WebGL2 watercolor painting surface whose simulated pigment drives DEMON knobs.",
     "dependencies": ["DEMON /sdk bundle", "WebGL2"],
     "controls": ["brush", "palette", "flash dry", "test autopainter", "prompt"]
+  },
+  {
+    "id": "watercolor-codex",
+    "name": "DEMON Watercolor Codex",
+    "path": "apps/watercolor-codex",
+    "route": "/watercolor-codex",
+    "kind": "static",
+    "summary": "Compact watercolor control panel for fixture-driven DEMON sessions.",
+    "dependencies": ["DEMON /sdk bundle", "WebGL2"],
+    "controls": ["brush", "fixture", "prompt", "dynamic controls", "mute"]
   }
 ]

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DEMON Watercolor Codex</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <canvas id="paper" aria-label="Live watercolor control surface"></canvas>
+
+    <main class="shell">
+      <section class="topbar" aria-label="Session controls">
+        <div class="brand">
+          <div class="mark"></div>
+          <div>
+            <h1>Watercolor Codex</h1>
+            <p id="status">Loading DEMON contract...</p>
+          </div>
+        </div>
+        <div class="transport">
+          <select id="fixtureSelect" aria-label="Source fixture"></select>
+          <button id="startBtn" type="button">Start</button>
+          <button id="muteBtn" type="button" disabled>Mute</button>
+        </div>
+      </section>
+
+      <section class="palette" aria-label="Live controls">
+        <div class="promptBox">
+          <label for="promptA">Prompt</label>
+          <textarea id="promptA" spellcheck="false">high definition liquid watercolor techno, detailed paper fibers, luminous pigments, deep stereo groove</textarea>
+        </div>
+        <div id="controls" class="controls"></div>
+      </section>
+
+      <section class="meters" aria-label="Watercolor engine state">
+        <div><span>Wetness</span><strong id="wetReadout">0.00</strong></div>
+        <div><span>Gesture</span><strong id="gestureReadout">idle</strong></div>
+        <div><span>Fixture</span><strong id="fixtureReadout">...</strong></div>
+      </section>
+    </main>
+
+    <div id="fallback" class="fallback" hidden>
+      WebGL2 is required for this watercolor surface.
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

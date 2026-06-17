@@ -17,6 +17,7 @@ SDK; when mounted by a DEMON backend they load the shared SDK from
 | DEMON Bloom | `apps/bloom` | `/bloom` | Reaction-diffusion organism that maps cursor chemistry to DEMON remix controls. |
 | DEMON Orrery | `apps/orrery` | `/orrery` | Celestial-mechanics control surface rendered from the live DEMON manifests. |
 | DEMON Watercolor | `apps/watercolor` | `/watercolor` | WebGL2 watercolor painting surface whose simulated pigment drives DEMON knobs. |
+| DEMON Watercolor Codex | `apps/watercolor-codex` | `/watercolor-codex` | Compact watercolor control panel for fixture-driven DEMON sessions. |
 
 ## Run
 
@@ -28,7 +29,8 @@ uv run python -u -m demos.realtime_motion_graph_web.run `
   --demo C:\path\to\demon-example-apps\apps\summon `
   --demo C:\path\to\demon-example-apps\apps\bloom `
   --demo C:\path\to\demon-example-apps\apps\orrery `
-  --demo C:\path\to\demon-example-apps\apps\watercolor
+  --demo C:\path\to\demon-example-apps\apps\watercolor `
+  --demo C:\path\to\demon-example-apps\apps\watercolor-codex
 ```
 
 The backend prints direct static demo URLs at startup.
@@ -41,6 +43,7 @@ uv run python -u -m demos.realtime_motion_graph_web.run --demo C:\path\to\demon-
 uv run python -u -m demos.realtime_motion_graph_web.run --demo C:\path\to\demon-example-apps\apps\bloom
 uv run python -u -m demos.realtime_motion_graph_web.run --demo C:\path\to\demon-example-apps\apps\orrery
 uv run python -u -m demos.realtime_motion_graph_web.run --demo C:\path\to\demon-example-apps\apps\watercolor
+uv run python -u -m demos.realtime_motion_graph_web.run --demo C:\path\to\demon-example-apps\apps\watercolor-codex
 ```
 
 ## Structure
