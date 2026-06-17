@@ -14,6 +14,7 @@ SDK; when mounted by a DEMON backend they load the shared SDK from
 |---|---|---|---|
 | DEMON Tides | `apps/tides` | `/tides` | Audio-reactive flow-field visualizer that doubles as an XY control surface. |
 | DEMON Summon | `apps/summon` | `/arp` | Hand-tracking control surface for a live DEMON remix session. |
+| DEMON Bloom | `apps/bloom` | `/bloom` | Reaction-diffusion organism that maps cursor chemistry to DEMON remix controls. |
 
 ## Run
 
@@ -22,7 +23,8 @@ From a DEMON checkout:
 ```powershell
 uv run python -u -m demos.realtime_motion_graph_web.run `
   --demo C:\path\to\demon-example-apps\apps\tides `
-  --demo C:\path\to\demon-example-apps\apps\summon
+  --demo C:\path\to\demon-example-apps\apps\summon `
+  --demo C:\path\to\demon-example-apps\apps\bloom
 ```
 
 The backend prints direct static demo URLs at startup.
@@ -32,6 +34,7 @@ You can also mount one app at a time:
 ```powershell
 uv run python -u -m demos.realtime_motion_graph_web.run --demo C:\path\to\demon-example-apps\apps\tides
 uv run python -u -m demos.realtime_motion_graph_web.run --demo C:\path\to\demon-example-apps\apps\summon
+uv run python -u -m demos.realtime_motion_graph_web.run --demo C:\path\to\demon-example-apps\apps\bloom
 ```
 
 ## Structure

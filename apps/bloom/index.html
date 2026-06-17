@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>DEMON · BLOOM</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- The whole screen is a living reaction-diffusion organism. Drag through
+       it to sculpt it; where your hand is in the field is the chemistry, and
+       that same value steers the remix. -->
+  <canvas id="gl"></canvas>
+  <div id="brush" class="brush"></div>
+
+  <!-- Two living readouts, bottom corners, riding the organism. -->
+  <div id="readout" class="readout">
+    <div class="r r-left"><b id="r-feed">—</b><span>flesh ↔ ash</span></div>
+    <div class="r r-right"><b id="r-kill">—</b><span>order ↔ riot</span></div>
+  </div>
+
+  <!-- Minimal floating control. Tucks away once it's alive. -->
+  <div id="panel" class="panel">
+    <h1>DEMON&nbsp;·&nbsp;BLOOM</h1>
+    <p class="sub">grow a thing that sings. drag to sculpt it.</p>
+
+    <label class="field"><span>seed song</span>
+      <select id="fixture"></select>
+    </label>
+    <label class="field"><span>incantation</span>
+      <input id="prompt" type="text" value="slow organic dub techno, deep and wet" />
+    </label>
+
+    <div class="row">
+      <button id="start" class="go">GROW IT</button>
+      <button id="reseed" class="sub-btn" disabled title="scatter fresh spores">reseed</button>
+      <button id="wild" class="sub-btn" disabled title="let it sculpt itself">wild</button>
+    </div>
+
+    <p id="status" class="status">loading…</p>
+    <p class="legend">drag = sculpt living tissue · move = set the chemistry (and the remix) · it pulses on the beat</p>
+  </div>
+
+  <div id="nogl" class="nogl" hidden>this browser can't render the organism (needs WebGL2 float buffers).</div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
