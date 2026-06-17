@@ -38,5 +38,15 @@
     "summary": "Celestial-mechanics control surface rendered from the live DEMON manifests.",
     "dependencies": ["DEMON /sdk bundle"],
     "controls": ["planet drag", "orbit click", "wheel trim", "spokes", "LoRA orbits"]
+  },
+  {
+    "id": "watercolor",
+    "name": "DEMON Watercolor",
+    "path": "apps/watercolor",
+    "route": "/watercolor",
+    "kind": "static",
+    "summary": "WebGL2 watercolor painting surface whose simulated pigment drives DEMON knobs.",
+    "dependencies": ["DEMON /sdk bundle", "WebGL2"],
+    "controls": ["brush", "palette", "flash dry", "test autopainter", "prompt"]
   }
 ]

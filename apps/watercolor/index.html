@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DEMON · Watercolor</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="stage">
+    <div class="easel">
+      <canvas id="paper"></canvas>
+      <div id="gl-error" class="gl-error" hidden>
+        <p>This demo needs WebGL2 with float render targets.</p>
+        <p id="gl-error-detail"></p>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <header class="panel-head">
+        <h1>DEMON <span>·</span> Watercolor</h1>
+        <p class="tagline">The painting is the mixing desk.</p>
+      </header>
+
+      <div id="demon-status" class="status">loading…</div>
+
+      <section class="block">
+        <h2>Session</h2>
+        <label class="field">
+          <span>Song</span>
+          <select id="demon-fixture"></select>
+        </label>
+        <label class="field">
+          <span>Prompt</span>
+          <input id="demon-prompt" type="text"
+                 value="instrumental ambient electronic, flowing textures" />
+        </label>
+        <div class="row">
+          <button id="demon-start" class="primary">Start</button>
+          <button id="demon-reload" disabled>Reload</button>
+          <button id="demon-test">Test</button>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Studio</h2>
+        <div id="palette" class="palette"></div>
+        <label class="field slider">
+          <span>Brush</span>
+          <input id="brush-size" type="range" min="0" max="1" step="0.01" value="0.45" />
+        </label>
+        <label class="field slider">
+          <span>Water</span>
+          <input id="brush-water" type="range" min="0" max="1" step="0.01" value="0.6" />
+        </label>
+        <div class="row">
+          <button id="brush-dry">Dry the sheet</button>
+          <button id="brush-clear">Fresh paper</button>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>What the paint is playing</h2>
+        <div id="knob-rows" class="knob-rows"></div>
+        <p class="footnote">
+          Wet paper remixes harder; blank paper follows the song. Warm
+          pigments warm the music, pale washes brighten it, gritty texture
+          roughens it. Dry the sheet to come home.
+        </p>
+      </section>
+    </aside>
+  </main>
+
+  <script type="module" src="./demon-bridge.js"></script>
+</body>
+</html>
