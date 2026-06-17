@@ -18,5 +18,15 @@
     "summary": "Hand-tracking control surface for a live DEMON remix session.",
     "dependencies": ["DEMON /sdk bundle", "MediaPipe", "Three.js", "Tone.js"],
     "controls": ["pinch", "hand height", "hand distance", "LoRA A/B"]
+  },
+  {
+    "id": "bloom",
+    "name": "DEMON Bloom",
+    "path": "apps/bloom",
+    "route": "/bloom",
+    "kind": "static",
+    "summary": "Reaction-diffusion organism that maps cursor chemistry to DEMON remix controls.",
+    "dependencies": ["DEMON /sdk bundle", "WebGL2"],
+    "controls": ["pointer xy", "drag", "shift-drag", "reseed", "wild"]
   }
 ]
