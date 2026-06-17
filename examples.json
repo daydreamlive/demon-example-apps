@@ -28,5 +28,15 @@
     "summary": "Reaction-diffusion organism that maps cursor chemistry to DEMON remix controls.",
     "dependencies": ["DEMON /sdk bundle", "WebGL2"],
     "controls": ["pointer xy", "drag", "shift-drag", "reseed", "wild"]
+  },
+  {
+    "id": "orrery",
+    "name": "DEMON Orrery",
+    "path": "apps/orrery",
+    "route": "/orrery",
+    "kind": "static",
+    "summary": "Celestial-mechanics control surface rendered from the live DEMON manifests.",
+    "dependencies": ["DEMON /sdk bundle"],
+    "controls": ["planet drag", "orbit click", "wheel trim", "spokes", "LoRA orbits"]
   }
 ]
