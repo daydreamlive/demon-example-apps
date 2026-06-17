@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DEMON ⟡ ORRERY</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="surface"></canvas>
+
+  <aside id="hud">
+    <header>
+      <div class="wordmark">DEMON <span class="sep">⟡</span> ORRERY</div>
+      <div id="lamp" class="lamp idle"><i></i><span id="lampText">IDLE</span></div>
+    </header>
+
+    <div class="scroll">
+      <section>
+        <h2>Flight plan</h2>
+        <label class="fld"><span>Trajectory A</span>
+          <textarea id="promptA" rows="2" spellcheck="false">dark melodic techno, hypnotic arpeggio, analog warmth, driving bass</textarea>
+        </label>
+        <label class="fld"><span>Trajectory B</span>
+          <textarea id="promptB" rows="2" spellcheck="false">orchestral strings, cinematic swell, soaring brass, epic</textarea>
+        </label>
+        <div class="blendRow">
+          <span class="cap">A</span>
+          <input id="blend" type="range" min="0" max="1" step="0.001" value="0">
+          <span class="cap">B</span>
+        </div>
+        <button id="transmit" class="btn" disabled>Transmit</button>
+      </section>
+
+      <section>
+        <h2>World</h2>
+        <div class="row">
+          <select id="fixture"></select>
+          <button id="swapBtn" class="btn" disabled>Swap</button>
+        </div>
+        <div id="worldNote" class="note"></div>
+      </section>
+
+      <section>
+        <h2>Resonators</h2>
+        <div id="loraList"><div class="note">Awaiting link…</div></div>
+      </section>
+
+      <section>
+        <h2>Subsystems</h2>
+        <div id="subsystems"><div class="note">Loading manifest…</div></div>
+      </section>
+    </div>
+
+    <footer id="telemetry">
+      <div><b id="tBpm">—</b><span>bpm</span></div>
+      <div><b id="tKey">—</b><span>key</span></div>
+      <div><b id="tTick">—</b><span>tick ms</span></div>
+      <div><b id="tPos">—</b><span>position</span></div>
+    </footer>
+  </aside>
+
+  <div id="overlay">
+    <div class="panel">
+      <div class="bigmark">DEMON <span class="sep">⟡</span> ORRERY</div>
+      <p class="tag">A celestial-mechanics control surface for live generative music.
+      The star is the stream. The planets are the knobs. Drag them.</p>
+      <button id="engage" class="btn big" disabled>Engage</button>
+      <div id="bootStatus" class="boot">contacting backend…</div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
