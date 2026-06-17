@@ -58,5 +58,15 @@
     "summary": "Compact watercolor control panel for fixture-driven DEMON sessions.",
     "dependencies": ["DEMON /sdk bundle", "WebGL2"],
     "controls": ["brush", "fixture", "prompt", "dynamic controls", "mute"]
+  },
+  {
+    "id": "face-warp",
+    "name": "DEMON Face Warp",
+    "path": "apps/face-warp",
+    "route": "/face-warp",
+    "kind": "static",
+    "summary": "Webcam face-warp interface with kick-reactive DEMON audio controls.",
+    "dependencies": ["DEMON /sdk bundle", "MediaPipe", "Three.js", "webcam"],
+    "controls": ["start", "fixture", "kick react", "eye distance", "jaw line", "UV factor"]
   }
 ]
