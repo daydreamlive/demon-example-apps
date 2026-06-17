@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DEMON Face Warp</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="app">
+      <section class="hud top">
+        <div class="brand">
+          <span id="signal" class="signal"></span>
+          <div>
+            <h1>DEMON Face Warp</h1>
+            <p id="status">Loading three-mediapipe-rig canonical face...</p>
+          </div>
+        </div>
+        <div class="transport">
+          <button id="startBtn" type="button">Start DEMON</button>
+          <button id="webcamBtn" type="button">Retry Webcam</button>
+          <button id="stopBtn" type="button" disabled>Stop</button>
+        </div>
+      </section>
+
+      <section class="hud controls">
+        <div class="panel-title">
+          <span>Package Face Controls</span>
+          <output id="energyReadout">0.00</output>
+        </div>
+        <div class="xy-pad" id="xyPad">
+          <span class="axis horizontal"></span>
+          <span class="axis vertical"></span>
+          <span class="puck" id="puck"></span>
+        </div>
+        <div class="grid">
+          <label>eyeDistance <input id="eyeDistance" type="range" min="-2.25" max="2.25" step="0.001" value="0" /></label>
+          <label>jawLine <input id="jawLine" type="range" min="-2.25" max="2.25" step="0.001" value="0" /></label>
+          <label>Kick react <input id="kickReact" type="range" min="0" max="3" step="0.01" value="1" /></label>
+          <label>UV factor <input id="uvFactor" type="range" min="0" max="1" step="0.001" value="0" /></label>
+          <label>Roughness <input id="roughness" type="range" min="0" max="1" step="0.001" value="0.8" /></label>
+          <label>Metalness <input id="metalness" type="range" min="0" max="1" step="0.001" value="0" /></label>
+          <label>Clearcoat <input id="clearcoat" type="range" min="0" max="1" step="0.001" value="0" /></label>
+        </div>
+      </section>
+
+      <section class="hud engine">
+        <div class="panel-title">
+          <span>DEMON</span>
+          <output id="engineReadout">idle</output>
+        </div>
+        <label>Track <select id="fixtureSelect"></select></label>
+        <label>Key <select id="keySelect">
+          <option>C</option><option>Db</option><option>D</option><option>Eb</option>
+          <option>E</option><option>F</option><option>Gb</option><option>G</option>
+          <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
+        </select></label>
+        <label>Prompt A <textarea id="promptA" rows="3">rubbery mutant funk, elastic bass, comic vocal chops, glossy club drums</textarea></label>
+        <label>Prompt B <textarea id="promptB" rows="3">haunted hyperpop carnival, warped face filter energy, syncopated synth stabs</textarea></label>
+        <div class="grid">
+          <label>Prompt blend <input id="promptBlend" type="range" min="0" max="1" step="0.01" value="0.25" /></label>
+          <label>Depth <input id="depth" type="range" min="1" max="8" step="1" value="4" /></label>
+        </div>
+        <div class="grid">
+          <label>X knob <select id="xKnob"></select></label>
+          <label>Y knob <select id="yKnob"></select></label>
+        </div>
+        <div id="quickKnobs" class="quick-knobs"></div>
+      </section>
+
+      <section class="meters">
+        <span id="bassMeter"></span>
+        <span id="midMeter"></span>
+        <span id="sparkMeter"></span>
+      </section>
+    </main>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://esm.sh/three@0.183.1",
+          "three/": "https://esm.sh/three@0.183.1/",
+          "three/webgpu": "https://esm.sh/three@0.183.1/webgpu",
+          "three/tsl": "https://esm.sh/three@0.183.1/tsl",
+          "@mediapipe/tasks-vision": "https://esm.sh/@mediapipe/tasks-vision@0.10.32",
+          "fflate": "https://esm.sh/fflate@0.8.2"
+        }
+      }
+    </script>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
