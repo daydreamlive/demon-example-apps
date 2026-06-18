@@ -65,8 +65,8 @@
     "path": "apps/face-warp",
     "route": "/face-warp",
     "kind": "static",
-    "summary": "Webcam face-warp interface with kick-reactive DEMON audio controls.",
+    "summary": "Webcam face-warp interface with a beat-synced reactive XY dot driving DEMON controls.",
     "dependencies": ["DEMON /sdk bundle", "MediaPipe", "Three.js", "webcam"],
-    "controls": ["start", "fixture", "kick react", "eye distance", "jaw line", "UV factor"]
+    "controls": ["start", "fixture", "xy dot", "reactivity strength", "division", "method", "mode"]
   }
 ]

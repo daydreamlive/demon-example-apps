@@ -35,7 +35,10 @@ const els = {
   engine: $("engineReadout"),
   eyeDistance: $("eyeDistance"),
   jawLine: $("jawLine"),
-  kickReact: $("kickReact"),
+  reactStrength: $("reactStrength"),
+  reactDivision: $("reactDivision"),
+  reactMethod: $("reactMethod"),
+  reactMode: $("reactMode"),
   uvFactor: $("uvFactor"),
   roughness: $("roughness"),
   metalness: $("metalness"),
@@ -46,16 +49,22 @@ const els = {
 };
 
 const FACE_BLEND_LIMIT = 2.25;
-const KICK_EYE_RESPONSE = 2.4;
-const KICK_JAW_RESPONSE = 2.0;
 const UV_FACTOR_DEAD_ZONE = 0.01;
+// Divisions per full pattern cycle. The dot advances one quarter of a circle
+// (or sine cycle) per division, so every division is a visible move.
+const REACT_CYCLE_DIVS = 4;
+const FALLBACK_BPM = 120;
 
 const state = {
   fixtures: [],
   knobEntries: [],
   params: {},
   quick: new Map(),
+  // Manual pad position (the dot's resting center) set by drag / sliders.
   pointer: { x: 0, y: 0, active: false },
+  // Manual center + beat-synced reactive offset, clamped to the pad. Drives
+  // both the X/Y DEMON knobs and the face morphs.
+  effective: { x: 0, y: 0 },
   audio: { bass: 0, mid: 0, spark: 0, kick: 0, energy: 0 },
   remote: null,
   player: null,
@@ -400,7 +409,7 @@ async function startDemon() {
     sendPrompt();
     state.running = true;
     els.stop.disabled = false;
-    setStatus("DEMON live. Kick is driving face reaction.", "live");
+    setStatus("DEMON live. Beat is moving the control dot.", "live");
   } catch (error) {
     console.error(error);
     stopDemon();
@@ -481,6 +490,7 @@ function render(timeMs) {
   elapsedSec += dt;
 
   updateAudio(dt, elapsedSec);
+  updateReactor();
   applyPackageFaceControls();
   state.faceBinding?.update(dt);
   updateDemonParams(elapsedSec);
@@ -516,19 +526,16 @@ function updateAudio(dt, t) {
 function applyPackageFaceControls() {
   const mesh = state.faceMesh;
   if (!mesh?.morphTargetDictionary || !mesh.morphTargetInfluences) return;
-  const kick = state.audio.kick;
-  const reaction = Number(els.kickReact.value);
-  const eyeRest = Number(els.eyeDistance.value);
-  const jawRest = Number(els.jawLine.value);
-  const eyeKick = clamp01(kick * reaction * KICK_EYE_RESPONSE);
-  const jawKick = clamp01(kick * reaction * KICK_JAW_RESPONSE);
-  setMorph(mesh, "eyeDistance", kickTowardOppositeExtreme(eyeRest, eyeKick));
-  setMorph(mesh, "jawLine", kickTowardOppositeExtreme(jawRest, jawKick));
+  const eff = state.effective;
+  setMorph(mesh, "eyeDistance", clamp(eff.x * FACE_BLEND_LIMIT, -FACE_BLEND_LIMIT, FACE_BLEND_LIMIT));
+  setMorph(mesh, "jawLine", clamp(eff.y * FACE_BLEND_LIMIT, -FACE_BLEND_LIMIT, FACE_BLEND_LIMIT));
   if (state.uvNode) {
     state.uvNode.value = uvFactorValue();
   }
-  pink.intensity = 5.8;
-  cyan.intensity = 4.8;
+  // The dot owns the warp; the kick only pulses the lights for ambiance.
+  const kick = state.audio.kick;
+  pink.intensity = 5.8 + kick * 4.2;
+  cyan.intensity = 4.8 + kick * 3.6;
 }
 
 function uvFactorValue() {
@@ -536,12 +543,84 @@ function uvFactorValue() {
   return value <= UV_FACTOR_DEAD_ZONE ? 0 : value;
 }
 
-function kickTowardOppositeExtreme(rest, amount) {
-  const clampedRest = clamp(rest, -FACE_BLEND_LIMIT, FACE_BLEND_LIMIT);
-  const direction = clampedRest >= 0 ? -1 : 1;
-  const opposite = direction * FACE_BLEND_LIMIT;
-  const biasedOpposite = lerp(opposite, clampedRest, 0.08);
-  return lerp(clampedRest, biasedOpposite, amount);
+// Beats elapsed on the music clock. Uses the playhead + detected BPM when a
+// session is live, otherwise a wall-clock fallback so the dot still moves.
+function beatClock() {
+  const bpm = Number(state.remote?.detectedBpm) || FALLBACK_BPM;
+  const pos = state.running && state.player ? state.player.positionSec : elapsedSec;
+  return (pos * bpm) / 60;
+}
+
+// Cheap deterministic [0,1) hash so a step index always maps to the same point
+// (lets continuous mode glide between consecutive random targets).
+function reactHash(n) {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function reactRandomPoint(step) {
+  const angle = reactHash(step) * Math.PI * 2;
+  // Keep radius in [0.5, 1] so every retarget is a visible jump, never a nudge.
+  const radius = 0.5 + 0.5 * reactHash(step * 1.37 + 19.19);
+  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+}
+
+function smoothstep(t) {
+  return t * t * (3 - 2 * t);
+}
+
+// Beat-synced offset (in pad units) added to the manual center. Magnitude is
+// scaled by Strength; Division sets the cadence; Method sets the path; Mode
+// chooses snap (discrete) vs glide (continuous).
+function computeReactOffset() {
+  const strength = Number(els.reactStrength.value);
+  if (!(strength > 0)) return { x: 0, y: 0 };
+
+  const divBeats = Number(els.reactDivision.value) || 4;
+  const method = els.reactMethod.value;
+  const discrete = els.reactMode.value === "discrete";
+  const p = beatClock() / divBeats; // advances 1.0 per division
+  const step = Math.floor(p);
+  const frac = p - step;
+
+  let x = 0;
+  let y = 0;
+  if (method === "random") {
+    if (discrete) {
+      const pt = reactRandomPoint(step);
+      x = pt.x;
+      y = pt.y;
+    } else {
+      const a = reactRandomPoint(step);
+      const b = reactRandomPoint(step + 1);
+      const t = smoothstep(frac);
+      x = lerp(a.x, b.x, t);
+      y = lerp(a.y, b.y, t);
+    }
+  } else if (method === "circular") {
+    const angle = ((discrete ? step : p) / REACT_CYCLE_DIVS) * Math.PI * 2;
+    x = Math.cos(angle);
+    y = Math.sin(angle);
+  } else {
+    // sine: oscillate horizontally through the center, one cycle per 4 divisions.
+    const angle = ((discrete ? step : p) / REACT_CYCLE_DIVS) * Math.PI * 2;
+    x = Math.sin(angle);
+    y = 0;
+  }
+
+  return { x: x * strength, y: y * strength };
+}
+
+function updateReactor() {
+  const offset = computeReactOffset();
+  const ex = clamp(state.pointer.x + offset.x, -1, 1);
+  const ey = clamp(state.pointer.y + offset.y, -1, 1);
+  state.effective.x = ex;
+  state.effective.y = ey;
+  const px = (ex + 1) / 2;
+  const py = 1 - (ey + 1) / 2;
+  els.puck.style.left = `${px * 100}%`;
+  els.puck.style.top = `${py * 100}%`;
 }
 
 function setMorph(mesh, name, value) {
@@ -556,8 +635,8 @@ function updateDemonParams(t) {
   lastParamsAt = t;
 
   const raw = { ...state.params };
-  mapAxis(raw, els.xKnob.value, (state.pointer.x + 1) / 2);
-  mapAxis(raw, els.yKnob.value, (state.pointer.y + 1) / 2);
+  mapAxis(raw, els.xKnob.value, (state.effective.x + 1) / 2);
+  mapAxis(raw, els.yKnob.value, (state.effective.y + 1) / 2);
   for (const [name, bind] of state.quick) {
     raw[name] = coerceKnobValue(bind.spec, Number(bind.input.value));
   }

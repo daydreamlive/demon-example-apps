@@ -33,10 +33,33 @@
           <span class="axis vertical"></span>
           <span class="puck" id="puck"></span>
         </div>
+        <div class="grid react">
+          <label>Strength <input id="reactStrength" type="range" min="0" max="1" step="0.01" value="0.6" /></label>
+          <label>Division
+            <select id="reactDivision">
+              <option value="1">Quarter</option>
+              <option value="2">Half</option>
+              <option value="4" selected>Bar</option>
+              <option value="8">2 bar</option>
+            </select>
+          </label>
+          <label>Method
+            <select id="reactMethod">
+              <option value="random">Random</option>
+              <option value="circular" selected>Circular</option>
+              <option value="sin">Sine</option>
+            </select>
+          </label>
+          <label>Mode
+            <select id="reactMode">
+              <option value="continuous" selected>Continuous</option>
+              <option value="discrete">Discrete</option>
+            </select>
+          </label>
+        </div>
         <div class="grid">
           <label>eyeDistance <input id="eyeDistance" type="range" min="-2.25" max="2.25" step="0.001" value="0" /></label>
           <label>jawLine <input id="jawLine" type="range" min="-2.25" max="2.25" step="0.001" value="0" /></label>
-          <label>Kick react <input id="kickReact" type="range" min="0" max="3" step="0.01" value="1" /></label>
           <label>UV factor <input id="uvFactor" type="range" min="0" max="1" step="0.001" value="0" /></label>
           <label>Roughness <input id="roughness" type="range" min="0" max="1" step="0.001" value="0.8" /></label>
           <label>Metalness <input id="metalness" type="range" min="0" max="1" step="0.001" value="0" /></label>
