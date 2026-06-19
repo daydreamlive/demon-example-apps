@@ -4,6 +4,7 @@ import { mix, texture, uniform } from "three/tsl";
 import { setupTracker } from "https://esm.sh/three-mediapipe-rig@0.1.41?deps=three@0.183.1,@mediapipe/tasks-vision@0.10.32,fflate@0.8.2";
 import {
   AudioPlayer,
+  DEFAULT_CONFIG,
   RemoteBackend,
   SLICE_FLAG_DELTA,
   fetchKnobManifest,
@@ -21,14 +22,18 @@ const els = {
   webcam: $("webcamBtn"),
   stop: $("stopBtn"),
   fixture: $("fixtureSelect"),
-  key: $("keySelect"),
   promptA: $("promptA"),
   promptB: $("promptB"),
   promptBlend: $("promptBlend"),
-  depth: $("depth"),
-  xKnob: $("xKnob"),
-  yKnob: $("yKnob"),
-  quickKnobs: $("quickKnobs"),
+  lora: $("loraSelect"),
+  loraStrength: $("loraStrength"),
+  loraStrengthValue: $("loraStrengthValue"),
+  denoise: $("denoiseKnob"),
+  denoiseValue: $("denoiseValue"),
+  structure: $("structureKnob"),
+  structureValue: $("structureValue"),
+  timbre: $("timbreKnob"),
+  timbreValue: $("timbreValue"),
   xyPad: $("xyPad"),
   puck: $("puck"),
   energy: $("energyReadout"),
@@ -54,16 +59,38 @@ const UV_FACTOR_DEAD_ZONE = 0.01;
 // (or sine cycle) per division, so every division is a visible move.
 const REACT_CYCLE_DIVS = 4;
 const FALLBACK_BPM = 120;
+const DEFAULT_KEY = "C";
+const DEFAULT_BAR_LENGTH = "4";
+const DEFAULT_DEPTH = 4;
+const DEFAULT_LORA_STRENGTH = 0.5;
+const SLIDER_DEFS = {
+  denoise: {
+    param: "denoise",
+    fallback: { type: "float", min: 0, max: 1, step: 0.01, default: DEFAULT_CONFIG.controls.denoise },
+  },
+  structure: {
+    param: "hint_strength",
+    fallback: { type: "float", min: 0, max: 1, step: 0.01, default: DEFAULT_CONFIG.controls.hint_strength },
+  },
+  timbre: {
+    param: "timbre_strength",
+    fallback: { type: "float", min: 0, max: 1, step: 0.01, default: 1.0 },
+    sendDirect: (remote, value) => remote.sendSetTimbreStrength(value),
+  },
+};
 
 const state = {
   fixtures: [],
+  loras: [],
+  activeLora: "",
+  loraStrength: DEFAULT_LORA_STRENGTH,
   knobEntries: [],
   params: {},
-  quick: new Map(),
+  sliderControls: new Map(),
   // Manual pad position (the dot's resting center) set by drag / sliders.
   pointer: { x: 0, y: 0, active: false },
   // Manual center + beat-synced reactive offset, clamped to the pad. Drives
-  // both the X/Y DEMON knobs and the face morphs.
+  // the face morphs.
   effective: { x: 0, y: 0 },
   audio: { bass: 0, mid: 0, spark: 0, kick: 0, energy: 0 },
   remote: null,
@@ -128,13 +155,14 @@ async function boot() {
   window.addEventListener("resize", resize);
 
   try {
-    const [tracker, fixtures, manifest, contract] = await Promise.all([
+    const [tracker, fixtures, loraCatalog, manifest, contract] = await Promise.all([
       setupTracker({
         onlyFace: true,
         displayScale: 0.75,
         drawLandmarksOverlay: false,
       }),
       fetchJson("/api/fixtures").catch(() => []),
+      fetchJson("/api/loras").catch(() => ({ loras: [] })),
       fetchKnobManifest().catch(() => ({ version: 0, knobs: {} })),
       fetchWireContract().catch(() => null),
       renderer.init(),
@@ -142,7 +170,9 @@ async function boot() {
 
     state.tracker = tracker;
     state.fixtures = Array.isArray(fixtures) ? fixtures : [];
+    state.loras = Array.isArray(loraCatalog?.loras) ? loraCatalog.loras : [];
     fillFixtures();
+    fillLoras();
     applyManifest(manifest);
     warnOnVersionMismatch(manifest, contract);
     await loadCanonicalFace();
@@ -229,6 +259,24 @@ function fillFixtures() {
   els.fixture.value = state.fixtures.includes(preferred) ? preferred : state.fixtures[0] || "";
 }
 
+function fillLoras() {
+  const selected = els.lora.value || state.activeLora;
+  els.lora.replaceChildren();
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = state.loras.length ? "No LoRA" : "No LoRAs found";
+  els.lora.append(empty);
+  for (const lora of state.loras) {
+    const option = document.createElement("option");
+    option.value = lora.id || "";
+    option.textContent = lora.name || lora.id || "Unnamed LoRA";
+    els.lora.append(option);
+  }
+  const ids = state.loras.map((lora) => lora.id).filter(Boolean);
+  els.lora.value = ids.includes(selected) ? selected : ids[0] || "";
+  state.activeLora = els.lora.value;
+}
+
 function applyManifest(manifest) {
   const knobs = manifest?.knobs && typeof manifest.knobs === "object" ? manifest.knobs : {};
   state.knobEntries = Object.entries(knobs).map(([name, spec]) => ({ name, spec }));
@@ -237,62 +285,29 @@ function applyManifest(manifest) {
     state.params[name] = defaultKnobValue(spec);
   }
 
-  fillAxisSelect(els.xKnob, pickKnobName(["denoise", "feedback", "guidance", "timbre"], 0));
-  fillAxisSelect(els.yKnob, pickKnobName(["structure", "timbre", "seed", "shift"], 1));
-  makeQuickKnobs();
+  state.sliderControls.clear();
+  configureKnobSlider("denoise", els.denoise, els.denoiseValue);
+  configureKnobSlider("structure", els.structure, els.structureValue);
+  configureKnobSlider("timbre", els.timbre, els.timbreValue);
 }
 
-function fillAxisSelect(select, selected) {
-  select.replaceChildren();
-  for (const { name, spec } of state.knobEntries) {
-    if (!isMappable(spec)) continue;
-    const option = document.createElement("option");
-    option.value = name;
-    option.textContent = labelFor(name);
-    select.append(option);
-  }
-  if (selected) select.value = selected;
-}
-
-function pickKnobName(words, fallbackIndex) {
-  const candidates = state.knobEntries.filter(({ spec }) => isMappable(spec));
-  for (const word of words) {
-    const found = candidates.find(({ name }) => name.toLowerCase().includes(word));
-    if (found) return found.name;
-  }
-  return candidates[fallbackIndex]?.name || candidates[0]?.name || "";
-}
-
-function makeQuickKnobs() {
-  els.quickKnobs.replaceChildren();
-  state.quick.clear();
-  const numeric = state.knobEntries.filter(({ spec }) => isNumeric(spec)).slice(0, 5);
-  for (const { name, spec } of numeric) {
-    const min = numberOr(spec.min, 0);
-    const max = numberOr(spec.max, 1);
-    const step = numberOr(spec.step, (max - min) / 100);
-    const value = numberOr(state.params[name], numberOr(spec.default, min));
-    const row = document.createElement("div");
-    row.className = "quick-row";
-    const title = document.createElement("span");
-    title.textContent = labelFor(name);
-    const input = document.createElement("input");
-    input.type = "range";
-    input.min = String(min);
-    input.max = String(max);
-    input.step = String(step || 0.01);
-    input.value = String(value);
-    const out = document.createElement("span");
-    out.textContent = formatKnob(value);
-    input.addEventListener("input", () => {
-      const next = coerceKnobValue(spec, Number(input.value));
-      state.params[name] = next;
-      out.textContent = formatKnob(next);
-    });
-    row.append(title, input, out);
-    els.quickKnobs.append(row);
-    state.quick.set(name, { input, out, spec });
-  }
+function configureKnobSlider(control, input, out) {
+  const def = SLIDER_DEFS[control];
+  const entry = state.knobEntries.find((item) => item.name === def.param);
+  const spec = entry && isNumeric(entry.spec) ? entry.spec : def.fallback;
+  const min = numberOr(spec.min, 0);
+  const max = numberOr(spec.max, 1);
+  const step = numberOr(spec.step, (max - min) / 100);
+  const current = input.disabled ? undefined : Number(input.value);
+  const value = numberOr(current, numberOr(state.params[def.param], numberOr(spec.default, min)));
+  input.min = String(min);
+  input.max = String(max);
+  input.step = String(step || 0.01);
+  input.value = String(value);
+  input.disabled = false;
+  out.textContent = formatKnob(value);
+  state.params[def.param] = coerceKnobValue(spec, value);
+  state.sliderControls.set(control, { input, out, spec, param: def.param, sendDirect: def.sendDirect });
 }
 
 function bindMousePad() {
@@ -346,16 +361,99 @@ function bindEngineControls() {
   els.promptBlend.addEventListener("input", () => {
     state.remote?.sendSetPromptBlend(Number(els.promptBlend.value));
   });
-  els.depth.addEventListener("change", () => {
-    state.remote?.sendSetDepth(Number(els.depth.value));
+  bindKnobSlider("denoise", els.denoise, els.denoiseValue);
+  bindKnobSlider("structure", els.structure, els.structureValue);
+  bindKnobSlider("timbre", els.timbre, els.timbreValue);
+  bindRangePointer(els.denoise);
+  bindRangePointer(els.structure);
+  bindRangePointer(els.timbre);
+  bindRangePointer(els.loraStrength);
+  els.loraStrength.addEventListener("input", () => {
+    state.loraStrength = Number(els.loraStrength.value);
+    els.loraStrengthValue.textContent = formatKnob(state.loraStrength);
+    sendLoraStrength();
+  });
+  els.lora.addEventListener("change", () => {
+    setActiveLora(els.lora.value);
   });
   els.fixture.addEventListener("change", () => {
     if (!state.remote || !els.fixture.value) return;
-    state.remote.sendSwapSourceByName(els.fixture.value, els.promptA.value, els.key.value, "4");
+    state.remote.sendSwapSourceByName(els.fixture.value, els.promptA.value, DEFAULT_KEY, DEFAULT_BAR_LENGTH);
   });
-  for (const input of [els.promptA, els.promptB, els.key]) {
+  for (const input of [els.promptA, els.promptB]) {
     input.addEventListener("change", sendPrompt);
   }
+}
+
+function setActiveLora(id) {
+  const prev = state.activeLora;
+  state.activeLora = id;
+  if (!state.remote) return;
+  if (prev && prev !== id) state.remote.sendDisableLora(prev);
+  if (id) {
+    state.remote.sendEnableLora(id, state.loraStrength);
+    sendLoraStrength();
+  }
+}
+
+function sendLoraStrength() {
+  if (!state.remote || !state.player || !state.activeLora) return;
+  state.remote.sendParams(
+    { [`lora_str_${state.activeLora}`]: state.loraStrength },
+    state.player.positionSec,
+  );
+}
+
+function bindKnobSlider(control, input, out) {
+  input.addEventListener("input", () => {
+    const bind = state.sliderControls.get(control);
+    if (!bind) return;
+    const next = coerceKnobValue(bind.spec, Number(input.value));
+    state.params[bind.param] = next;
+    out.textContent = formatKnob(next);
+    if (bind.sendDirect && state.remote) bind.sendDirect(state.remote, next);
+  });
+}
+
+function bindRangePointer(input) {
+  let activePointer = null;
+
+  input.addEventListener("pointerdown", (event) => {
+    if (input.disabled) return;
+    activePointer = event.pointerId;
+    input.setPointerCapture(event.pointerId);
+    input.focus();
+    event.preventDefault();
+    setRangeFromPointer(input, event.clientX);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  input.addEventListener("pointermove", (event) => {
+    if (input.disabled || activePointer !== event.pointerId) return;
+    event.preventDefault();
+    setRangeFromPointer(input, event.clientX);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  for (const type of ["pointerup", "pointercancel"]) {
+    input.addEventListener(type, (event) => {
+      if (activePointer !== event.pointerId) return;
+      activePointer = null;
+      if (input.hasPointerCapture(event.pointerId)) input.releasePointerCapture(event.pointerId);
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+}
+
+function setRangeFromPointer(input, clientX) {
+  const rect = input.getBoundingClientRect();
+  const min = Number(input.min);
+  const max = Number(input.max);
+  const step = Number(input.step) || 0;
+  const unit = clamp01((clientX - rect.left) / Math.max(1, rect.width));
+  let value = min + (max - min) * unit;
+  if (step > 0) value = Math.round((value - min) / step) * step + min;
+  input.value = String(clamp(value, min, max));
 }
 
 async function startWebcam() {
@@ -390,7 +488,10 @@ async function startDemon() {
     {
       prompt: els.promptA.value,
       prompt_b: els.promptB.value,
-      depth: Number(els.depth.value),
+      lora: true,
+      sde: false,
+      depth: DEFAULT_DEPTH,
+      steps: DEFAULT_CONFIG.engine.steps,
       fixture_name: els.fixture.value,
       use_server_fixture: true,
     },
@@ -407,6 +508,8 @@ async function startDemon() {
     await player.resume();
     attachAnalyser(player);
     sendPrompt();
+    sendDirectSliderValues();
+    if (els.lora.value) setActiveLora(els.lora.value);
     state.running = true;
     els.stop.disabled = false;
     setStatus("DEMON live. Beat is moving the control dot.", "live");
@@ -419,9 +522,18 @@ async function startDemon() {
 
 function wireRemote(remote, player) {
   remote.addEventListener("ready", () => {
+    if (!state.loras.length && Array.isArray(remote.loraCatalog)) {
+      state.loras = remote.loraCatalog;
+      fillLoras();
+    }
     if (remote.knobManifest) applyManifest(remote.knobManifest);
-    if (remote.detectedKey) els.key.value = remote.detectedKey;
-    if (remote.pipelineDepth) els.depth.value = String(remote.pipelineDepth);
+  });
+  remote.addEventListener("lora_catalog", (event) => {
+    state.loras = Array.isArray(event.detail) ? event.detail : [];
+    fillLoras();
+    fetchKnobManifest()
+      .then(applyManifest)
+      .catch(() => {});
   });
   remote.addEventListener("params", (event) => mergeParams(event.detail));
   remote.addEventListener("params_echo", (event) => mergeParams(event.detail));
@@ -438,9 +550,6 @@ function wireRemote(remote, player) {
     player.swap(event.detail.interleaved, event.detail.channels);
     if (event.detail.fixture_name) els.fixture.value = event.detail.fixture_name;
   });
-  remote.addEventListener("depth_applied", (event) => {
-    if (event.detail?.depth) els.depth.value = String(event.detail.depth);
-  });
   remote.addEventListener("close", () => {
     if (!remote.closedByUser) setStatus("DEMON socket closed.", "warn");
   });
@@ -449,10 +558,10 @@ function wireRemote(remote, player) {
 function mergeParams(raw) {
   if (!raw || typeof raw !== "object") return;
   Object.assign(state.params, raw);
-  for (const [name, bind] of state.quick) {
-    if (!(name in raw)) continue;
-    bind.input.value = String(raw[name]);
-    bind.out.textContent = formatKnob(raw[name]);
+  for (const bind of state.sliderControls.values()) {
+    if (!(bind.param in raw)) continue;
+    bind.input.value = String(raw[bind.param]);
+    bind.out.textContent = formatKnob(raw[bind.param]);
   }
 }
 
@@ -479,8 +588,16 @@ function stopDemon() {
 }
 
 function sendPrompt() {
-  state.remote?.sendPrompt(els.promptA.value, els.key.value, "4", els.promptB.value);
+  state.remote?.sendPrompt(els.promptA.value, DEFAULT_KEY, DEFAULT_BAR_LENGTH, els.promptB.value);
   state.remote?.sendSetPromptBlend(Number(els.promptBlend.value));
+}
+
+function sendDirectSliderValues() {
+  if (!state.remote) return;
+  for (const bind of state.sliderControls.values()) {
+    if (!bind.sendDirect) continue;
+    bind.sendDirect(state.remote, coerceKnobValue(bind.spec, Number(bind.input.value)));
+  }
 }
 
 function render(timeMs) {
@@ -634,21 +751,15 @@ function updateDemonParams(t) {
   if (t - lastParamsAt < 0.035) return;
   lastParamsAt = t;
 
-  const raw = { ...state.params };
-  mapAxis(raw, els.xKnob.value, (state.effective.x + 1) / 2);
-  mapAxis(raw, els.yKnob.value, (state.effective.y + 1) / 2);
-  for (const [name, bind] of state.quick) {
-    raw[name] = coerceKnobValue(bind.spec, Number(bind.input.value));
+  const raw = {};
+  for (const bind of state.sliderControls.values()) {
+    if (bind.sendDirect) continue;
+    raw[bind.param] = coerceKnobValue(bind.spec, Number(bind.input.value));
   }
+  const loraParam = state.activeLora ? `lora_str_${state.activeLora}` : "";
+  if (loraParam) raw[loraParam] = state.loraStrength;
   state.params = raw;
   state.remote.sendParams(raw, state.player.positionSec);
-}
-
-function mapAxis(raw, name, unit) {
-  if (!name) return;
-  const entry = state.knobEntries.find((item) => item.name === name);
-  if (!entry) return;
-  raw[name] = valueFromUnit(entry.spec, clamp01(unit));
 }
 
 function resize() {
@@ -689,29 +800,10 @@ function isNumeric(spec) {
   return spec?.type === "float" || spec?.type === "int";
 }
 
-function isMappable(spec) {
-  return isNumeric(spec) || spec?.type === "bool" || spec?.type === "enum";
-}
-
-function valueFromUnit(spec, unit) {
-  if (spec.type === "bool") return unit >= 0.5;
-  if (spec.type === "enum") {
-    const options = Array.isArray(spec.options) ? spec.options : [];
-    return options[Math.min(options.length - 1, Math.floor(unit * options.length))] ?? "";
-  }
-  const min = numberOr(spec.min, 0);
-  const max = numberOr(spec.max, 1);
-  return coerceKnobValue(spec, min + (max - min) * unit);
-}
-
 function coerceKnobValue(spec, value) {
   if (spec.type === "int") return Math.round(value);
   if (spec.type === "float") return Number(value);
   return value;
-}
-
-function labelFor(name) {
-  return name.replace(/^lora_str_/, "lora ").replace(/_/g, " ");
 }
 
 function formatKnob(value) {

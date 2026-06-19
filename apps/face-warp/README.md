@@ -23,5 +23,6 @@ Then open the web UI printed by the server.
 - The reactivity controls move that dot around the XY pad in time with the music:
   `Strength` (how far it travels), `Division` (quarter / half / bar / 2 bar),
   `Method` (random / circular / sine), and `Mode` (discrete snaps vs continuous glides).
-  The dot drives both the face warp and the mapped DEMON X/Y knobs.
+- The dot drives the face warp. DEMON exposes direct `denoise`, `structure`,
+  and `timbre` sliders in the engine panel.
 - `UV factor` overlays the canonical UV guide, with zero clamped off.

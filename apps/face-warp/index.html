@@ -73,22 +73,30 @@
           <output id="engineReadout">idle</output>
         </div>
         <label>Track <select id="fixtureSelect"></select></label>
-        <label>Key <select id="keySelect">
-          <option>C</option><option>Db</option><option>D</option><option>Eb</option>
-          <option>E</option><option>F</option><option>Gb</option><option>G</option>
-          <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
-        </select></label>
         <label>Prompt A <textarea id="promptA" rows="3">rubbery mutant funk, elastic bass, comic vocal chops, glossy club drums</textarea></label>
         <label>Prompt B <textarea id="promptB" rows="3">haunted hyperpop carnival, warped face filter energy, syncopated synth stabs</textarea></label>
         <div class="grid">
           <label>Prompt blend <input id="promptBlend" type="range" min="0" max="1" step="0.01" value="0.25" /></label>
-          <label>Depth <input id="depth" type="range" min="1" max="8" step="1" value="4" /></label>
+          <label>LoRA <select id="loraSelect"></select></label>
         </div>
-        <div class="grid">
-          <label>X knob <select id="xKnob"></select></label>
-          <label>Y knob <select id="yKnob"></select></label>
+        <div class="knob-sliders">
+          <label>
+            <span>LoRA strength <output id="loraStrengthValue">0.50</output></span>
+            <input id="loraStrength" type="range" min="0" max="2" step="0.01" value="0.5" />
+          </label>
+          <label>
+            <span>Denoise <output id="denoiseValue">--</output></span>
+            <input id="denoiseKnob" type="range" min="0" max="1" step="0.01" value="0" disabled />
+          </label>
+          <label>
+            <span>Structure <output id="structureValue">--</output></span>
+            <input id="structureKnob" type="range" min="0" max="1" step="0.01" value="0" disabled />
+          </label>
+          <label>
+            <span>Timbre <output id="timbreValue">--</output></span>
+            <input id="timbreKnob" type="range" min="0" max="1" step="0.01" value="0" disabled />
+          </label>
         </div>
-        <div id="quickKnobs" class="quick-knobs"></div>
       </section>
 
       <section class="meters">
