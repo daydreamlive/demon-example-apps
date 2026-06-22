@@ -19,6 +19,9 @@ SDK; when mounted by a DEMON backend they load the shared SDK from
 | [DEMON Watercolor](apps/watercolor/README.md) | `apps/watercolor` | `/watercolor` | WebGL2 watercolor painting surface whose simulated pigment drives DEMON knobs. |
 | [DEMON Watercolor Codex](apps/watercolor-codex/README.md) | `apps/watercolor-codex` | `/watercolor-codex` | Compact watercolor control panel for fixture-driven DEMON sessions. |
 | [DEMON Face Warp](apps/face-warp/README.md) | `apps/face-warp` | `/face-warp` | Webcam face-warp interface with kick-reactive DEMON audio controls. |
+| DEMON Tides | `apps/tides` | `/tides` | Audio-reactive flow-field visualizer that doubles as an XY control surface. |
+| DEMON Summon | `apps/summon` | `/arp` | Hand-tracking control surface for a live DEMON remix session. |
+| DEMON Visage | `apps/visage` | `/visage` | Face-tracking control surface: facial expressions drive a live DEMON remix. |
 
 ## Run
 

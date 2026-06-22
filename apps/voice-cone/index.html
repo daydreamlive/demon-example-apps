@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Voice Cone</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    :root {
+      --paper: #f5f0eb;
+      --ink: #2b1612;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--paper);
+      cursor: grab;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      background:
+        radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0) 34%),
+        linear-gradient(135deg, #f8f3ee 0%, #f1ebe5 100%);
+    }
+
+    body.is-dragging {
+      cursor: grabbing;
+    }
+
+    .hint {
+      position: fixed;
+      left: clamp(18px, 4vw, 54px);
+      bottom: clamp(18px, 4vw, 48px);
+      color: rgba(47, 28, 21, 0.36);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      user-select: none;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stage" aria-label="Interactive morphing cone"></canvas>
+  <div class="hint">Drag the signal</div>
+
+  <script>
+    const canvas = document.getElementById("stage");
+    const ctx = canvas.getContext("2d", { alpha: false });
+
+    const CONFIG = {
+      background: "#f5f0eb",
+      rings: 48,
+      baseBlur: 0,
+      glowBlur: 24,
+      idleBreath: 0.012,
+      dragInfluence: 1.2,
+      springDuration: 1.65,
+      colors: [
+        "#78ddea",
+        "#a6edf1",
+        "#d9f7ed",
+        "#ffd7ba",
+        "#ffac5a",
+        "#fa7928",
+        "#df351f",
+        "#9f1821",
+        "#64121f"
+      ]
+    };
+
+    const pointer = {
+      x: innerWidth * 0.5,
+      y: innerHeight * 0.48,
+      startX: 0,
+      startY: 0,
+      down: false
+    };
+
+    const morph = {
+      x: 0,
+      y: 0,
+      tilt: 0,
+      stretch: 0,
+      pinch: 0,
+      crater: 0,
+      pulse: 0
+    };
+
+    let dpr = 1;
+    let w = 0;
+    let h = 0;
+    let time = 0;
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function colorAt(t) {
+      const index = Math.min(CONFIG.colors.length - 1, Math.floor(t * CONFIG.colors.length));
+      return CONFIG.colors[index];
+    }
+
+    function resize() {
+      dpr = Math.min(devicePixelRatio || 1, 2);
+      w = innerWidth;
+      h = innerHeight;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function setDragShape() {
+      const dx = pointer.x - pointer.startX;
+      const dy = pointer.y - pointer.startY;
+      const maxAxis = Math.min(w, h);
+      gsap.to(morph, {
+        x: clamp(dx * 1.28, -maxAxis * 0.62, maxAxis * 0.62),
+        y: clamp(dy, -maxAxis * 0.38, maxAxis * 0.46),
+        tilt: clamp((dx / maxAxis) * 1.45, -1.05, 1.05),
+        stretch: clamp(-dy / maxAxis, -0.45, 0.9),
+        pinch: clamp(Math.abs(dx) / maxAxis + Math.max(-dy, 0) / maxAxis, 0, 0.7),
+        crater: clamp((dy - maxAxis * 0.08) / (maxAxis * 0.34), 0, 1),
+        duration: 0.42,
+        ease: "power3.out",
+        overwrite: true
+      });
+    }
+
+    function releaseShape() {
+      gsap.to(morph, {
+        x: 0,
+        y: 0,
+        tilt: 0,
+        stretch: 0,
+        pinch: 0,
+        crater: 0,
+        duration: CONFIG.springDuration,
+        ease: "elastic.out(1, 0.52)",
+        overwrite: true
+      });
+    }
+
+    function ringPoint(t, angle, base, height, centerX, baseY) {
+      const pulseScale = 1 + (morph.pulse - 0.5) * CONFIG.idleBreath;
+      const topWeight = Math.pow(t, 1.85);
+      const sideWeight = 0.22 + topWeight * 0.78;
+      const crater = morph.crater;
+      const widthCurve = 1 - t * 0.86;
+      const verticalPull = CONFIG.dragInfluence * topWeight;
+      const horizontalPull = CONFIG.dragInfluence * sideWeight;
+      const squash = 1 - morph.stretch * 0.12 + morph.pinch * 0.12;
+      const radiusX = base * widthCurve * squash * pulseScale * (1 - crater * 0.14);
+      const radiusY = radiusX * 0.235;
+      const liftAmount = Math.max(0, morph.stretch);
+      const coneLift = height * liftAmount * topWeight;
+      const craterDip = crater * height * Math.pow(t, 2.15) * 0.82;
+      const cx = centerX + morph.x * horizontalPull + morph.tilt * height * (t - 0.18) * 0.34;
+      const cy = baseY - coneLift + morph.y * verticalPull + craterDip;
+      return {
+        x: cx + Math.cos(angle) * radiusX,
+        y: cy + Math.sin(angle) * radiusY
+      };
+    }
+
+    function drawSoftEllipse(x, y, rx, ry, color, alpha, blur) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.filter = `blur(${blur}px)`;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawRingSheen(t, base, height, centerX, baseY) {
+      if (t < 0.08 || t > 0.9) return;
+
+      const p = ringPoint(t, 0, base, height, centerX, baseY);
+      const rx = base * (1 - t * 0.86) * (1 - morph.crater * 0.14);
+      const ry = rx * 0.235;
+
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.strokeStyle = `rgba(255, 252, 242, ${0.18 * (1 - t)})`;
+      ctx.lineWidth = Math.max(1, Math.min(w, h) * 0.0014);
+      ctx.beginPath();
+      ctx.ellipse(p.x - rx * 0.05, p.y - ry * 0.18, rx * 0.82, ry * 0.72, 0, Math.PI * 1.03, Math.PI * 1.86);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawOrganicRing(t, base, height, centerX, baseY) {
+      const steps = 144;
+      const warmth = colorAt(t);
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = warmth;
+      ctx.shadowColor = warmth;
+      ctx.shadowBlur = t > 0.08 ? 3 : 0;
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+
+      for (let i = 0; i <= steps; i++) {
+        const a = (i / steps) * Math.PI * 2;
+        const point = ringPoint(t, a, base, height, centerX, baseY);
+        if (i === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
+      }
+
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = t < 0.08 ? "rgba(255,255,255,0.34)" : "rgba(255,255,255,0.22)";
+      ctx.lineWidth = Math.max(1, Math.min(w, h) * 0.0018);
+      ctx.stroke();
+      ctx.restore();
+
+      drawRingSheen(t, base, height, centerX, baseY);
+    }
+
+    function drawCraterAccent(base, height, centerX, baseY) {
+      if (morph.crater < 0.04) return;
+      const t = 0.92;
+      const p = ringPoint(t, 0, base, height, centerX, baseY);
+      const r = base * 0.16 * (0.5 + morph.crater);
+      const g = ctx.createRadialGradient(p.x, p.y, r * 0.1, p.x, p.y, r);
+      g.addColorStop(0, `rgba(64, 10, 20, ${0.42 * morph.crater})`);
+      g.addColorStop(0.44, `rgba(145, 25, 24, ${0.2 * morph.crater})`);
+      g.addColorStop(1, "rgba(255, 145, 62, 0)");
+      ctx.save();
+      ctx.globalCompositeOperation = "multiply";
+      ctx.filter = "blur(10px)";
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, r * 1.35, r * 0.48, -morph.tilt * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawScene(now) {
+      time = now;
+      const cx = w * 0.5;
+      const cy = h * 0.62;
+      const base = Math.min(w, h) * 0.36;
+      const height = Math.min(w, h) * 0.48;
+
+      ctx.clearRect(0, 0, w, h);
+      const paper = ctx.createRadialGradient(cx, cy - base * 0.35, 0, cx, cy - base * 0.35, Math.max(w, h) * 0.78);
+      paper.addColorStop(0, "#fbf7f2");
+      paper.addColorStop(0.48, CONFIG.background);
+      paper.addColorStop(1, "#ece5dd");
+      ctx.fillStyle = paper;
+      ctx.fillRect(0, 0, w, h);
+
+      drawSoftEllipse(cx + morph.x * 0.2, cy + base * 0.07, base * 1.18, base * 0.32, "rgba(49, 31, 25, 0.12)", 1, 32);
+      drawSoftEllipse(cx + morph.x * 0.28, cy + base * 0.015, base * 0.92, base * 0.2, "rgba(50, 24, 18, 0.08)", 1, 18);
+      drawSoftEllipse(cx + morph.x * 0.32, cy - Math.max(0, morph.stretch) * height * 0.18, base * 0.88, height * 0.22, "rgba(255, 118, 45, 0.12)", 1, CONFIG.glowBlur);
+      drawSoftEllipse(cx - base * 0.18 + morph.x * 0.2, cy - base * 0.09, base * 0.66, base * 0.14, "rgba(120, 221, 234, 0.14)", 1, 24);
+
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      for (let i = 0; i < CONFIG.rings; i++) {
+        const t = i / (CONFIG.rings - 1);
+        drawOrganicRing(t, base, height, cx, cy);
+      }
+      ctx.restore();
+
+      drawCraterAccent(base, height, cx, cy);
+
+      const peak = ringPoint(1, 0, base, height, cx, cy);
+      drawSoftEllipse(peak.x - 4, peak.y - 3, base * 0.05, base * 0.018, "rgba(255, 246, 225, 0.3)", 1, 6);
+
+      requestAnimationFrame(drawScene);
+    }
+
+    addEventListener("resize", resize);
+
+    addEventListener("pointermove", (event) => {
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      if (pointer.down) setDragShape();
+    }, { passive: true });
+
+    addEventListener("pointerdown", (event) => {
+      pointer.down = true;
+      pointer.startX = event.clientX;
+      pointer.startY = event.clientY;
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      document.body.classList.add("is-dragging");
+      try {
+        canvas.setPointerCapture?.(event.pointerId);
+      } catch (_) {}
+      setDragShape();
+    });
+
+    addEventListener("pointerup", (event) => {
+      pointer.down = false;
+      document.body.classList.remove("is-dragging");
+      try {
+        canvas.releasePointerCapture?.(event.pointerId);
+      } catch (_) {}
+      releaseShape();
+    });
+
+    addEventListener("pointercancel", releaseShape);
+
+    gsap.to(morph, {
+      pulse: 1,
+      duration: 2.8,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut"
+    });
+
+    resize();
+    requestAnimationFrame(drawScene);
+  </script>
+</body>
+</html>

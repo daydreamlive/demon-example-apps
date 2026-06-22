@@ -1,0 +1,379 @@
+:root {
+  --bg: #02100a;
+  --acc: #6cffb0;
+  --acc2: #4fd0ff;
+  --warn: #ff6a4f;
+  --ink: #d7ffe7;
+  --dim: #7fb89a;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+}
+
+/* ── Video stage ─────────────────────────────────────────────────────── */
+#stage {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #000;
+}
+#cam,
+#mesh {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+#cam {
+  filter: saturate(0.55) brightness(0.62) contrast(1.05);
+}
+#cam.mirrored,
+#mesh.mirrored {
+  transform: scaleX(-1);
+}
+#vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 42%, transparent 36%, rgba(0, 0, 0, 0.66) 100%);
+}
+
+/* ── Loading overlay ─────────────────────────────────────────────────── */
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(108, 255, 176, 0.16), transparent 32%),
+    rgba(0, 0, 0, 0.86);
+}
+#loading-overlay[hidden] { display: none; }
+.loading-card { width: min(360px, calc(100vw - 40px)); }
+.loading-title {
+  margin-bottom: 10px;
+  color: var(--acc);
+  font-size: 13px;
+  letter-spacing: 0.22em;
+}
+.loading-message { font-size: 12px; color: var(--ink); }
+.loading-bar {
+  height: 4px;
+  margin-top: 18px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.loading-bar::before {
+  content: "";
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--acc), var(--acc2));
+  animation: sweep 1.1s ease-in-out infinite;
+}
+@keyframes sweep {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(260%); }
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────── */
+#topbar {
+  position: fixed;
+  top: 16px;
+  left: 18px;
+  z-index: 40;
+  pointer-events: none;
+}
+#topbar h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0.26em;
+  color: var(--acc);
+  text-shadow: 0 0 18px rgba(108, 255, 176, 0.4);
+}
+#topbar .sub {
+  margin-top: 3px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.face-state {
+  margin-top: 10px;
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  border-radius: 999px;
+  color: var(--dim);
+  border: 1px solid rgba(120, 255, 180, 0.25);
+  background: rgba(0, 0, 0, 0.45);
+}
+.face-state.on {
+  color: #00150c;
+  background: var(--acc);
+  border-color: var(--acc);
+}
+
+/* ── Manual REMIX control ────────────────────────────────────────────── */
+#remix-control {
+  margin-top: 12px;
+  width: 200px;
+  padding: 9px 11px 10px;
+  pointer-events: auto;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(120, 255, 180, 0.28);
+  backdrop-filter: blur(6px);
+}
+.rc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.rc-label {
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--acc);
+}
+#remix-val {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+#remix-slider {
+  width: 100%;
+  margin: 8px 0 4px;
+  accent-color: var(--acc);
+}
+.rc-hint {
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* ── Driver cards (dynamic face → param mapping) ─────────────────────── */
+#drivers {
+  position: fixed;
+  top: 16px;
+  right: 18px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: min(248px, 40vw);
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.drv {
+  padding: 8px 10px 9px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(120, 255, 180, 0.18);
+  backdrop-filter: blur(6px);
+  transition: opacity 0.15s, border-color 0.15s;
+}
+.drv.off { opacity: 0.55; border-color: rgba(255, 255, 255, 0.08); }
+.drv-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Input side: the facial FEATURE select. */
+.drv-feature {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(180, 240, 255, 0.35);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.drv-remove {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  line-height: 1;
+  font-size: 14px;
+  color: var(--dim);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.drv-remove:hover { color: var(--warn); border-color: var(--warn); }
+.drv-val {
+  flex: none;
+  min-width: 42px;
+  text-align: right;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+.drv-map {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+.drv-arrow { flex: none; color: var(--acc); font-size: 13px; }
+/* Output side: the DEMON parameter select. */
+.drv-target {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  color: var(--acc);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(120, 255, 180, 0.35);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.drv.off .drv-target { color: var(--dim); border-color: rgba(255, 255, 255, 0.18); }
+.drv-meter {
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+.drv-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--acc), var(--acc2));
+  transition: width 0.08s linear;
+}
+#drv-add {
+  font: inherit;
+  font-size: 11px;
+  padding: 7px;
+  color: var(--acc);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px dashed rgba(120, 255, 180, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+}
+#drv-add:hover { background: rgba(108, 255, 176, 0.12); }
+
+/* ── Control panel ───────────────────────────────────────────────────── */
+#demon-panel {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  z-index: 50;
+  font-size: 11px;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.74);
+  border: 1px solid rgba(120, 255, 180, 0.28);
+  border-radius: 10px;
+  padding: 9px 11px;
+  backdrop-filter: blur(8px);
+}
+.panel-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr) minmax(180px, 1.4fr) minmax(160px, 1fr) minmax(160px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+.cell { display: grid; gap: 3px; min-width: 0; }
+.dim { color: var(--dim); }
+.status-cell #demon-status {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#demon-panel select,
+#demon-panel input[type="text"] {
+  font: inherit;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 6px;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(120, 255, 180, 0.3);
+  border-radius: 5px;
+}
+#demon-panel button {
+  font: inherit;
+  color: #00120a;
+  background: var(--acc);
+  border: 0;
+  border-radius: 5px;
+  padding: 6px 10px;
+  cursor: pointer;
+  min-width: 60px;
+}
+#demon-panel button:disabled { opacity: 0.4; cursor: default; }
+#demon-panel button.alt {
+  background: transparent;
+  color: var(--acc);
+  border: 1px solid rgba(120, 255, 180, 0.5);
+}
+.seg {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid rgba(120, 255, 180, 0.35);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.5);
+}
+/* Scoped under #demon-panel so these beat the generic `#demon-panel button`
+   rule (which would otherwise paint both halves accent-green). */
+#demon-panel .seg-btn {
+  font: inherit;
+  padding: 5px 11px;
+  min-width: 0;
+  color: var(--dim);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+#demon-panel .seg-btn:hover { color: var(--ink); }
+/* Only the selected half is filled — the toggle reads as a seesaw. */
+#demon-panel .seg-btn.active {
+  color: #00150c;
+  background: var(--acc);
+  box-shadow: 0 0 10px rgba(108, 255, 176, 0.35);
+}
+.lora { display: grid; grid-template-columns: 1fr auto; gap: 3px 6px; align-items: center; }
+.lora select { grid-column: 1 / -1; }
+.lora input[type="range"] { width: 100%; margin: 0; accent-color: var(--acc); }
+.actions { display: flex; gap: 6px; }
+
+@media (max-width: 1100px) {
+  .panel-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-auto-rows: auto;
+  }
+  .actions { grid-column: 1 / -1; justify-content: flex-end; }
+  #drivers { width: min(210px, 36vw); }
+}
+@media (max-width: 680px) {
+  #drivers { top: auto; bottom: 156px; right: 10px; width: 168px; gap: 6px; }
+  #remix-control { width: 168px; }
+  .panel-grid { grid-template-columns: 1fr 1fr; }
+}
