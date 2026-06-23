@@ -68,5 +68,13 @@
     "summary": "Webcam face-warp interface with a beat-synced reactive XY dot driving DEMON controls.",
     "dependencies": ["DEMON /sdk bundle", "MediaPipe", "Three.js", "webcam"],
     "controls": ["start", "fixture", "xy dot", "reactivity strength", "division", "method", "mode"]
+    "id": "visage",
+    "name": "DEMON Visage",
+    "path": "apps/visage",
+    "route": "/visage",
+    "kind": "static",
+    "summary": "Face-tracking control surface: facial expressions drive a live DEMON remix.",
+    "dependencies": ["DEMON /sdk bundle", "MediaPipe FaceLandmarker"],
+    "controls": ["mouth open", "smile", "brow raise", "brow furrow", "head turn", "head nod", "prompt", "LoRA A/B"]
   }
 ]

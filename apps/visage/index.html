@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DEMON Visage — face-driven remix</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Camera / demo-clip video, mirrored for the webcam. -->
+    <div id="stage">
+      <video id="cam" autoplay playsinline muted></video>
+      <canvas id="mesh"></canvas>
+      <div id="vignette"></div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" aria-live="polite">
+      <div class="loading-card">
+        <div class="loading-title">DEMON VISAGE</div>
+        <div id="loading-message" class="loading-message">loading face tracker…</div>
+        <div class="loading-bar"></div>
+      </div>
+    </div>
+
+    <!-- Title + face lock state + manual REMIX (decoupled from the face). -->
+    <header id="topbar">
+      <h1>DEMON&nbsp;VISAGE</h1>
+      <div class="sub">your face shapes the remix</div>
+      <div id="face-state" class="face-state">starting…</div>
+      <div id="remix-control">
+        <div class="rc-row"><span class="rc-label" id="remix-label">strength</span><span id="remix-val">0.60</span></div>
+        <input id="remix-slider" type="range" min="0" max="1" step="0.01" value="0.6" />
+        <div class="rc-hint">denoise — overall remix strength (manual)</div>
+      </div>
+    </header>
+
+    <!-- Driver cards: one per facial movement, each with a dropdown choosing
+         which DEMON parameter it drives (built by demon-bridge.js). -->
+    <section id="drivers"></section>
+
+    <!-- Control bar -->
+    <footer id="demon-panel">
+      <div class="panel-grid">
+        <div class="cell status-cell">
+          <span class="dim">status</span>
+          <span id="demon-status">idle</span>
+        </div>
+        <div class="cell source-cell">
+          <span class="dim">source</span>
+          <div class="seg">
+            <button id="src-camera" class="seg-btn active">Camera</button>
+            <button id="src-video" class="seg-btn">Demo clip</button>
+          </div>
+        </div>
+        <div class="cell">
+          <span class="dim">song</span>
+          <select id="demon-fixture"></select>
+        </div>
+        <div class="cell">
+          <span class="dim">prompt</span>
+          <input id="demon-prompt" type="text" value="instrumental electronic music" />
+        </div>
+        <div class="cell lora-cell">
+          <span class="dim">style a</span>
+          <div class="lora">
+            <select id="demon-lora-a"></select>
+            <input id="demon-lora-a-strength" type="range" min="0" max="2" step="0.01" value="0.8" />
+            <span class="dim" id="demon-lora-a-value">0.80</span>
+          </div>
+        </div>
+        <div class="cell lora-cell">
+          <span class="dim">style b</span>
+          <div class="lora">
+            <select id="demon-lora-b"></select>
+            <input id="demon-lora-b-strength" type="range" min="0" max="2" step="0.01" value="0.8" />
+            <span class="dim" id="demon-lora-b-value">0.80</span>
+          </div>
+        </div>
+        <div class="cell actions">
+          <button id="demon-start">Start</button>
+          <button id="demon-reload" class="alt" disabled>Reload</button>
+          <button id="demon-test" class="alt">Test</button>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Bridge: maps face → DEMON knobs and runs the session. -->
+    <script type="module" src="./demon-bridge.js"></script>
+    <!-- Bootstrap the face tracker against the video + overlay canvas. -->
+    <script type="module">
+      import { tracker } from "./face.js";
+      const overlay = document.getElementById("loading-overlay");
+      const msg = document.getElementById("loading-message");
+      tracker.onStatus = (m) => { if (msg) msg.textContent = m; };
+      const video = document.getElementById("cam");
+      const canvas = document.getElementById("mesh");
+      try {
+        const source = await tracker.init(video, canvas);
+        document.getElementById("src-camera")?.classList.toggle("active", source === "camera");
+        document.getElementById("src-video")?.classList.toggle("active", source === "video");
+        if (overlay) overlay.hidden = true;
+      } catch (e) {
+        console.error("[visage] tracker init failed:", e);
+        if (msg) msg.textContent = "face tracker failed: " + (e?.message || e);
+      }
+    </script>
+  </body>
+</html>
